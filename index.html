@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC Flashcards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-center p-5">
+    <h1 class="text-3xl font-bold mb-5">TOEIC Flashcards</h1>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-5xl mx-auto" id="flashcards"></div>
+    
+    <div class="flex flex-wrap justify-center items-center mt-5 space-x-2 space-y-2" id="pagination"></div>
+    
+    <script>
+        const apiUrl = "https://script.google.com/macros/s/AKfycbwzQkK4TCVMkGgacZYzZy49RIe97E0i4sVZQCFAvAYdCZEEs4s6HJfUVXusKHM5WWpD/exec";
+        let words = [];
+        let currentPage = 1;
+        const itemsPerPage = 20;
+
+        async function fetchWords() {
+            try {
+                const response = await fetch(apiUrl);
+                words = await response.json();
+                renderCards();
+                renderPagination();
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        function speakWord(event, word) {
+            event.stopPropagation(); // ป้องกันการเปลี่ยนการ์ด
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = 'en-US';
+            speechSynthesis.speak(utterance);
+        }
+
+        function renderCards() {
+            const container = document.getElementById('flashcards');
+            container.innerHTML = '';
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const currentWords = words.slice(start, end);
+            
+            currentWords.forEach((word, index) => {
+                let card = document.createElement('div');
+                card.className = 'p-0 rounded-lg shadow-lg text-xl font-semibold cursor-pointer flex flex-col justify-center items-center h-32 relative';
+                card.innerHTML = `
+                    <span class='absolute top-2 left-2 text-black-500 text-sm'>${start + index + 1}</span>
+                    <button onclick="speakWord(event, '${word.english}')" class='absolute top-2 right-2 bg-white p-0 rounded-full shadow-md'>🔊</button>
+                    <span class='front bg-blue-500 text-white w-full h-full flex justify-center items-center rounded-lg'>${word.english}</span>
+                    <span class='back hidden bg-green-500 text-white w-full h-full flex justify-center items-center rounded-lg'>${word.thai}</span>
+                `;
+                card.onclick = function () {
+                    this.querySelector('.front').classList.toggle('hidden');
+                    this.querySelector('.back').classList.toggle('hidden');
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            const totalPages = Math.ceil(words.length / itemsPerPage);
+            
+            let backButton = document.createElement('button');
+            backButton.textContent = "Back";
+            backButton.className = "px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 disabled:opacity-50";
+            backButton.onclick = () => changePage(currentPage - 1);
+            backButton.disabled = currentPage === 1;
+            pagination.appendChild(backButton);
+
+            for (let i = 1; i <= totalPages; i++) {
+                let pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.className = `px-4 py-2 ${i === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-200'} rounded-lg hover:bg-blue-400`;
+                pageButton.onclick = () => changePage(i);
+                pagination.appendChild(pageButton);
+            }
+
+            let nextButton = document.createElement('button');
+            nextButton.textContent = "Next";
+            nextButton.className = "px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 disabled:opacity-50";
+            nextButton.onclick = () => changePage(currentPage + 1);
+            nextButton.disabled = currentPage === totalPages;
+            pagination.appendChild(nextButton);
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(words.length / itemsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderCards();
+                renderPagination();
+            }
+        }
+
+        fetchWords();
+    </script>
+</body>
+</html>
